@@ -1,0 +1,40 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Test and tool caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Generated outputs of the local web page
+runs/
+
+# Secrets (the .example templates are committed)
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
+# OS and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+# Office lock files left behind while a document is open
+~$*
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Internal planning documents: kept locally, not published
+/AI CAD Agent Demo*Programmer Requirements*.docx
+/AI CAD Agent POC*Domain Expert Requirements.pdf
+/docs/Stage 1 Plan Review*.pdf

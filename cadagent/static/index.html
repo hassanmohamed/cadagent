@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI CAD Agent · POC</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.js" } }
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18.5h12.5a3 3 0 0 0 3-3V3" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><circle cx="8" cy="18.5" r="0" /><circle cx="18.5" cy="8" r="1.4" fill="currentColor"/><circle cx="8.5" cy="18.5" r="1.4" fill="var(--surface)"/></svg>
+      <div>
+        <strong>AI CAD Agent</strong>
+        <span>Drawing, markup or sketch → sheet-metal part</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span id="ai-badge" class="badge" title=""></span>
+      <span id="version-chip" class="chip" hidden></span>
+      <button id="undo-btn" class="btn" disabled title="Step back to the previous version of the part">↶ Undo</button>
+      <button id="reset-btn" class="btn ghost" title="Clear everything and start again">New part</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="left">
+      <div class="card" id="upload-card">
+        <h2><span class="step">1</span> Upload and ask</h2>
+        <div class="segmented" role="tablist" aria-label="What should the demo do?">
+          <button role="tab" data-mode="create" class="active">Create part</button>
+          <button role="tab" data-mode="markup">Apply markups</button>
+        </div>
+        <p class="hint" id="mode-hint"></p>
+
+        <label class="dropzone" id="dropzone">
+          <input type="file" id="file-input" accept="image/*,application/pdf,.heic,.heif" hidden>
+          <span id="drop-text"><b>Drop a file here</b> or click to choose<br><small>PDF, PNG, JPEG or phone photo</small></span>
+        </label>
+
+        <div class="samples" id="samples" hidden>
+          <span class="samples-label">Test files</span>
+          <div id="sample-list"></div>
+        </div>
+
+        <div class="ask-row">
+          <input type="text" id="request-input" placeholder="Create this part" aria-label="Your request">
+          <button id="read-btn" class="btn primary" disabled>Read</button>
+        </div>
+        <p class="status" id="read-status" hidden></p>
+      </div>
+
+      <div class="card" id="confirm-card" hidden>
+        <h2><span class="step">2</span> Check the numbers</h2>
+        <p class="hint" id="confirm-hint"></p>
+
+        <div class="note" id="notes" hidden></div>
+
+        <div class="changes" id="changes" hidden>
+          <h3>Changes found <span class="muted">was → now</span></h3>
+          <ul id="change-list"></ul>
+        </div>
+
+        <form id="part-form" autocomplete="off" novalidate>
+          <div class="grid2">
+            <label class="field" data-path="part_type"><span>Part type</span>
+              <select name="part_type">
+                <option value="plate">Flat plate</option>
+                <option value="l_bracket">L-bracket</option>
+              </select>
+            </label>
+            <label class="field" data-path="name"><span>Name</span><input name="name" type="text"></label>
+            <label class="field" data-path="material"><span>Material</span><select name="material"></select></label>
+            <label class="field" data-path="thickness"><span>Thickness <i>mm</i></span><input name="thickness" type="number" step="any" min="0" list="thickness-options"><datalist id="thickness-options"></datalist></label>
+            <label class="field" data-path="width"><span id="width-label">Width <i>mm</i></span><input name="width" type="number" step="any" min="0"></label>
+            <label class="field" data-path="flange_a"><span id="flange-a-label">Flange A <i>mm</i></span><input name="flange_a" type="number" step="any" min="0"></label>
+            <label class="field bracket-only" data-path="flange_b"><span>Flange B <i>mm</i></span><input name="flange_b" type="number" step="any" min="0"></label>
+            <label class="field bracket-only" data-path="bend_radius"><span>Inner bend radius <i>mm</i></span><input name="bend_radius" type="number" step="any" min="0"></label>
+          </div>
+
+          <div class="holes-head">
+            <h3>Holes</h3>
+            <button type="button" class="btn small" id="add-hole">+ Add hole</button>
+          </div>
+          <table class="holes" id="holes-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th class="bracket-only">Flange</th>
+                <th id="from-edge-head">From free edge</th>
+                <th>From left</th>
+                <th>Ø</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <p class="muted small" id="no-holes" hidden>No holes.</p>
+
+          <div class="legend">
+            <span class="swatch uncertain"></span> Check this: the AI was not sure
+            <span class="swatch changed"></span> Changed by markup
+          </div>
+
+          <ul class="issues" id="issues" hidden></ul>
+
+          <div class="apply-row">
+            <button type="submit" class="btn primary big" id="apply-btn">Apply and build</button>
+            <button type="button" class="btn warn" id="force-btn" hidden title="Build the part even though it breaks an engineering rule">Build anyway</button>
+            <span class="status" id="apply-status" hidden></span>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="right">
+      <div class="card viewer-card">
+        <div class="tabs" role="tablist">
+          <button role="tab" data-tab="source">Uploaded sheet</button>
+          <button role="tab" data-tab="model" class="active">3D view</button>
+          <button role="tab" data-tab="flat">Flat pattern</button>
+          <button role="tab" data-tab="sheet">Drawing sheet</button>
+          <button role="tab" data-tab="data">Part data</button>
+          <div class="tabs-spacer"></div>
+          <div class="facts" id="facts"></div>
+        </div>
+
+        <div class="panes">
+          <div class="pane" data-pane="source" hidden>
+            <div class="empty" id="source-empty">Upload a file to see it here, next to the numbers.</div>
+            <img id="source-img" alt="The uploaded sheet" hidden>
+          </div>
+          <div class="pane" data-pane="model">
+            <div class="empty" id="model-empty">
+              <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M10 46h30a8 8 0 0 0 8-8V10" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/></svg>
+              <b>Nothing built yet</b>
+              <span>Upload a drawing, check the numbers, then click <em>Apply and build</em>.</span>
+            </div>
+            <canvas id="viewer" hidden></canvas>
+            <div class="viewer-hint" id="viewer-hint" hidden>Drag to rotate · scroll to zoom · right-drag to pan</div>
+          </div>
+          <div class="pane" data-pane="flat" hidden><div class="empty">The flat pattern appears here after the part is built.</div><div id="flat-holder" class="flat-holder" hidden></div></div>
+          <div class="pane" data-pane="sheet" hidden><div class="empty">The drawing sheet appears here after the part is built.</div><a id="sheet-link" class="sheet-link" target="_blank" rel="noopener" title="Open the PDF in a new tab" hidden><img id="sheet-img" alt="Drawing sheet"></a></div>
+          <div class="pane" data-pane="data" hidden><div class="empty">The part data appears here after the part is built.</div><pre id="data-pre" hidden></pre></div>
+        </div>
+
+        <div class="downloads" id="downloads" hidden>
+          <span class="muted">Download</span>
+          <a class="btn" data-kind="step" download>STEP <small>3D model</small></a>
+          <a class="btn" data-kind="dxf" download>DXF <small>flat pattern</small></a>
+          <a class="btn" data-kind="pdf" download>PDF <small>drawing sheet</small></a>
+          <a class="btn" data-kind="json" download>JSON <small>part data</small></a>
+          <a class="btn" id="zip-link" download>ZIP <small>all four</small></a>
+          <div class="tabs-spacer"></div>
+          <ol class="history" id="history"></ol>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" hidden></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

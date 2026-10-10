@@ -1,0 +1,6 @@
+libgl1
+libglu1-mesa
+libx11-6
+libxext6
+libxrender1
+libexpat1

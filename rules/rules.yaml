@@ -1,0 +1,62 @@
+# Engineering rules for the AI CAD Agent POC.
+#
+# !! PLACEHOLDER VALUES !!
+# Every number in this file is a typical textbook value entered by the developer
+# so the demo can run. The domain expert owns this file: replace the values with
+# the ones from the "Engineering rules" table in the requirements document.
+
+version: "placeholder-0.1"
+
+# Materials used in the demo. The name is printed on the drawing sheet.
+# For each allowed thickness (mm): the default inner bend radius (mm), used when
+# the drawing does not show one, and the K-factor used in the flat length formula.
+materials:
+  - name: "Steel S235"
+    aliases: ["S235", "S235JR", "Mild steel", "Steel"]
+    thicknesses:
+      1:   {bend_radius: 1,   k_factor: 0.40}
+      1.5: {bend_radius: 1.5, k_factor: 0.40}
+      2:   {bend_radius: 2,   k_factor: 0.42}
+      3:   {bend_radius: 3,   k_factor: 0.44}
+      4:   {bend_radius: 4,   k_factor: 0.44}
+      5:   {bend_radius: 5,   k_factor: 0.45}
+  - name: "Stainless 1.4301"
+    aliases: ["1.4301", "304", "AISI 304", "Stainless steel", "Stainless"]
+    thicknesses:
+      1:   {bend_radius: 1,   k_factor: 0.42}
+      1.5: {bend_radius: 1.5, k_factor: 0.42}
+      2:   {bend_radius: 2,   k_factor: 0.44}
+      3:   {bend_radius: 3,   k_factor: 0.45}
+  - name: "Aluminium 5754"
+    aliases: ["AlMg3", "EN AW-5754", "5754", "Aluminium", "Aluminum"]
+    thicknesses:
+      1:   {bend_radius: 1,   k_factor: 0.40}
+      1.5: {bend_radius: 1.5, k_factor: 0.40}
+      2:   {bend_radius: 2,   k_factor: 0.41}
+      3:   {bend_radius: 3,   k_factor: 0.42}
+      4:   {bend_radius: 4,   k_factor: 0.43}
+
+# Used when the drawing or sketch does not state them.
+defaults:
+  material: "Steel S235"
+  thickness: 3
+
+# Limits. Each limit is the larger of a fixed value (mm) and a multiple of the
+# sheet thickness. Set times_thickness to 0 to use a fixed value only.
+limits:
+  min_hole_diameter:
+    mm: 3
+    times_thickness: 1.0
+  min_hole_edge_to_part_edge:
+    mm: 3
+    times_thickness: 1.5
+  min_hole_edge_to_bend:
+    mm: 3
+    times_thickness: 2.0
+  # Not in the requirements table; a basic sanity check so holes do not merge.
+  min_hole_edge_to_hole_edge:
+    mm: 3
+    times_thickness: 1.0
+
+# Acceptance tolerance when comparing a flat length with the expected value (mm).
+flat_length_tolerance_mm: 0.1
